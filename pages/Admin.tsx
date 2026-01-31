@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getProducts, getTransactions, deleteProduct, getStoreSettings, saveStoreSettings, updateTransactionStatus, updateTransactionResi } from '../services/mockApi';
+import { getProducts, getTransactions, deleteProduct, getStoreSettings, saveStoreSettings, updateTransactionStatus, updateTransactionResi, IS_CLOUD_MODE } from '../services/mockApi';
 import { Product, Transaction, StoreSettings, PaymentMethod } from '../types';
-import { Plus, Trash2, Lock, Edit, DollarSign, ShoppingBag, TrendingUp, Save, CreditCard, Check, X, Eye, Phone, Wallet, QrCode, Loader2, LogOut, Calendar, Filter, ArrowUpDown, Search, Image as ImageIcon, Monitor, Upload } from 'lucide-react';
+import { Plus, Trash2, Lock, Edit, DollarSign, ShoppingBag, TrendingUp, Save, CreditCard, Check, X, Eye, Phone, Wallet, QrCode, Loader2, LogOut, Calendar, Filter, ArrowUpDown, Search, Image as ImageIcon, Monitor, Upload, Cloud, HardDrive } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 
 // Theme Presets
@@ -260,7 +260,13 @@ const Admin: React.FC = () => {
       )}
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div><h1 className="text-2xl font-bold text-white">Admin Dashboard</h1></div>
+        <div>
+            <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
+            <div className={`mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border ${IS_CLOUD_MODE ? 'bg-green-500/20 text-green-300 border-green-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'}`}>
+                {IS_CLOUD_MODE ? <Cloud className="w-3 h-3" /> : <HardDrive className="w-3 h-3" />}
+                {IS_CLOUD_MODE ? 'ONLINE MODE (Synced)' : 'OFFLINE MODE (Local Storage Only)'}
+            </div>
+        </div>
         <div className="flex gap-3">
             <button onClick={handleLogout} className="flex items-center gap-2 text-gray-200 hover:text-red-400 px-4 py-2 font-medium transition-colors">
                 <LogOut className="w-4 h-4" /> Logout
