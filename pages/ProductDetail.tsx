@@ -1,166 +1,161 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getProductById, createTransaction } from '../services/mockApi';
-import { Product } from '../types';
-import { Loader2, Shield, Zap, CreditCard, ArrowLeft, QrCode, Landmark } from 'lucide-react';
+import { getProductById, createTransaction, getReviewsByProductId } from '../services/mockApi';
+import { Product, Review } from '../types';
+import { Loader2, Shield, Zap, ArrowLeft, Star, User, PlayCircle } from 'lucide-react';
+import { useToast } from '../components/ToastContext';
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { addToast } = useToast();
+  
   const [product, setProduct] = useState<Product | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [email, setEmail] = useState('');
 
   useEffect(() => {
     if (id) {
-      getProductById(id).then(res => {
-        if (res.data) setProduct(res.data);
+      Promise.all([
+        getProductById(id),
+        getReviewsByProductId(id)
+      ]).then(([prodRes, revRes]) => {
+        if (prodRes.data) setProduct(prodRes.data);
+        if (revRes.data) setReviews(revRes.data);
         setLoading(false);
       });
     }
   }, [id]);
 
-  const handleBuy = async (method: string) => {
-    if (!product || !email) {
-      alert("Please enter your email to receive the product.");
-      return;
-    }
-    
+  const handleBuy = async () => {
+    if (!product) return;
     setProcessing(true);
-    // Simulate transaction creation and redirect to payment gateway
     try {
-      const res = await createTransaction(product._id, method, email);
+      const res = await createTransaction(product._id, 'bank_transfer', "guest@whllxyz.com");
       if (res.success && res.data) {
-        // Redirect to the simulated Payment Gateway
+        addToast("Transaction created! Redirecting...", 'success');
         navigate(`/payment/${res.data._id}`);
       } else {
-        alert("Transaction failed.");
+        addToast("Failed to create transaction", 'error');
+        setProcessing(false);
       }
     } catch (e) {
-      alert("Error processing payment");
-    } finally {
+      addToast("Error processing payment", 'error');
       setProcessing(false);
     }
   };
 
-  const formatter = new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0
-  });
+  const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
 
-  if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-blue-600" /></div>;
-  if (!product) return <div className="text-center p-20">Product not found.</div>;
+  if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-blue-500" /></div>;
+  if (!product) return <div className="text-center p-20 text-white">Product not found.</div>;
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <button onClick={() => navigate(-1)} className="flex items-center text-gray-500 hover:text-gray-900 mb-8 transition-colors">
+    <div className="max-w-5xl mx-auto space-y-12">
+      <button onClick={() => navigate('/')} className="flex items-center text-gray-200 hover:text-white transition-colors px-4 py-2 rounded-full hover:bg-white/5">
         <ArrowLeft className="w-4 h-4 mr-2" /> Back to Store
       </button>
 
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden grid grid-cols-1 md:grid-cols-2">
-        <div className="bg-gray-100 p-8 md:p-12 flex items-center justify-center">
-          <img 
-            src={product.imageUrl} 
-            alt={product.name} 
-            className="w-full max-w-md shadow-2xl rounded-lg transform rotate-1 hover:rotate-0 transition-transform duration-500"
-          />
+      {/* Main Product Info - Glass Container */}
+      <div className="glass-panel rounded-3xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
+        <div className="bg-black/30 p-8 md:p-12 flex flex-col items-center justify-center gap-6 border-r border-white/10">
+          <div className="relative w-full max-w-md">
+            <img src={product.imageUrl} alt={product.name} className="w-full shadow-2xl shadow-black/50 rounded-2xl transform rotate-1 hover:rotate-0 transition-transform duration-500 border border-white/10" />
+            {product.videoUrl && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                 <div className="bg-black/40 backdrop-blur-md p-4 rounded-full shadow-lg border border-white/20">
+                    <PlayCircle className="w-8 h-8 text-white" />
+                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Video Preview Section */}
+          {product.videoUrl && (
+            <div className="w-full max-w-md mt-4">
+               <h4 className="text-xs font-bold text-gray-100 mb-2 uppercase tracking-wider">Product Preview</h4>
+               <video 
+                  src={product.videoUrl} 
+                  controls 
+                  className="w-full rounded-xl shadow-lg border border-white/10 bg-black"
+               />
+            </div>
+          )}
         </div>
         
         <div className="p-8 md:p-12 flex flex-col justify-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">{product.name}</h1>
-          <p className="text-2xl font-bold text-blue-600 mb-6">{formatter.format(product.price)}</p>
-          
-          <div className="prose prose-sm text-gray-500 mb-8">
-            <p>{product.description}</p>
+          <div className="mb-4">
+             <h1 className="text-3xl font-bold text-white mb-2">{product.name}</h1>
+             {/* Rating Header */}
+             <div className="flex items-center gap-2">
+                <div className="flex text-yellow-400">
+                    {[1,2,3,4,5].map(star => (
+                        <Star key={star} className={`w-4 h-4 ${star <= (product.averageRating || 0) ? 'fill-current' : 'text-gray-500'}`} />
+                    ))}
+                </div>
+                <span className="text-sm text-gray-200 font-medium">({product.totalReviews || 0} reviews)</span>
+             </div>
           </div>
+
+          <div className="flex items-center gap-4 mb-6">
+             <p className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">{formatter.format(product.price)}</p>
+             {(product.fileSize || product.fileType) && (
+               <div className="flex items-center gap-2 text-xs font-medium text-gray-100 bg-white/10 border border-white/10 px-3 py-1 rounded-full">
+                 {product.fileType && <span>{product.fileType}</span>}
+                 {product.fileSize && <><span>•</span><span>{product.fileSize}</span></>}
+               </div>
+             )}
+          </div>
+          
+          <div className="prose prose-sm text-gray-100 mb-8 leading-relaxed"><p>{product.description}</p></div>
 
           <div className="space-y-4 mb-8">
-            <div className="flex items-center gap-3 text-sm text-gray-600">
-              <div className="p-2 bg-green-50 rounded-full text-green-600"><Zap className="w-4 h-4" /></div>
-              <span>Instant automatic delivery via email</span>
+            <div className="flex items-center gap-3 text-sm text-gray-200">
+              <div className="p-2 bg-green-500/20 text-green-400 rounded-full border border-green-500/30"><Zap className="w-4 h-4" /></div>
+              <span>Instant automatic delivery (after approval)</span>
             </div>
-            <div className="flex items-center gap-3 text-sm text-gray-600">
-              <div className="p-2 bg-blue-50 rounded-full text-blue-600"><Shield className="w-4 h-4" /></div>
-              <span>Secure payment by Midtrans (Simulated)</span>
+            <div className="flex items-center gap-3 text-sm text-gray-200">
+              <div className="p-2 bg-blue-500/20 text-blue-400 rounded-full border border-blue-500/30"><Shield className="w-4 h-4" /></div>
+              <span>Secure manual payment verification</span>
             </div>
           </div>
 
-          <button 
-            onClick={() => setShowPaymentModal(true)}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-xl shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] active:scale-[0.98]"
-          >
-            Buy Now
+          <button onClick={handleBuy} disabled={processing} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-900/40 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-wait border border-white/10">
+            {processing ? 'Processing...' : 'Buy Now'}
           </button>
         </div>
       </div>
 
-      {/* Payment Modal */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
-            <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold flex items-center gap-2 text-gray-900">
-                    <CreditCard className="w-6 h-6 text-blue-600" />
-                    Checkout
-                </h3>
+      {/* Reviews Section */}
+      <div className="max-w-3xl mx-auto">
+        <h3 className="text-xl font-bold text-white mb-6">Customer Reviews</h3>
+        {reviews.length === 0 ? (
+            <div className="text-center py-12 glass-panel rounded-2xl border-dashed border-white/20 text-gray-200">
+                No reviews yet. Be the first to review this product!
             </div>
-            
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email Address</label>
-              <input 
-                type="email" 
-                placeholder="name@example.com"
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <p className="text-xs text-gray-500 mt-2">We'll send the file to this email.</p>
+        ) : (
+            <div className="space-y-6">
+                {reviews.map(review => (
+                    <div key={review._id} className="glass-panel p-6 rounded-2xl">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-white/10 text-white rounded-full flex items-center justify-center border border-white/10"><User className="w-4 h-4" /></div>
+                                <span className="font-bold text-white">{review.userName}</span>
+                            </div>
+                            <span className="text-xs text-gray-300">{new Date(review.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex text-yellow-400 mb-3">
+                            {[1,2,3,4,5].map(star => (
+                                <Star key={star} className={`w-3 h-3 ${star <= review.rating ? 'fill-current' : 'text-gray-600'}`} />
+                            ))}
+                        </div>
+                        <p className="text-gray-100 text-sm">{review.comment}</p>
+                    </div>
+                ))}
             </div>
-
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-900 mb-1">Select Payment Method</p>
-              
-              <button 
-                disabled={processing}
-                onClick={() => handleBuy('qris')}
-                className="w-full flex items-center justify-start gap-4 p-4 border border-gray-200 rounded-xl hover:border-blue-600 hover:bg-blue-50/50 transition-all group bg-white"
-              >
-                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-600 group-hover:bg-white group-hover:text-blue-600 transition-colors">
-                    <QrCode className="w-6 h-6" />
-                </div>
-                <div className="text-left">
-                    <span className="block font-semibold text-gray-900 group-hover:text-blue-700">QRIS (Gopay/Ovo/Dana)</span>
-                    <span className="text-xs text-gray-500">Scan QR Code</span>
-                </div>
-              </button>
-
-              <button 
-                disabled={processing}
-                onClick={() => handleBuy('bank_transfer')}
-                className="w-full flex items-center justify-start gap-4 p-4 border border-gray-200 rounded-xl hover:border-blue-600 hover:bg-blue-50/50 transition-all group bg-white"
-              >
-                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-600 group-hover:bg-white group-hover:text-blue-600 transition-colors">
-                    <Landmark className="w-6 h-6" />
-                </div>
-                <div className="text-left">
-                    <span className="block font-semibold text-gray-900 group-hover:text-blue-700">Bank Transfer</span>
-                    <span className="text-xs text-gray-500">BCA / Mandiri</span>
-                </div>
-              </button>
-            </div>
-
-            <button 
-              onClick={() => setShowPaymentModal(false)}
-              className="mt-6 w-full py-3 text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
