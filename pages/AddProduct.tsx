@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createProduct, getProductById, updateProduct } from '../services/mockApi';
-import { ArrowLeft, Save, UploadCloud, Tag, FileText, Image as ImageIcon, LayoutGrid, Loader2, HardDrive, Sparkles, Wand2, Video, Film } from 'lucide-react';
+import { ArrowLeft, Save, UploadCloud, Tag, FileText, Image as ImageIcon, LayoutGrid, Loader2, HardDrive, Sparkles, Wand2, Video, Film, RefreshCcw, Layers } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 
 const CATEGORIES = [
@@ -40,6 +40,7 @@ const AddProduct: React.FC = () => {
   const [initialLoading, setInitialLoading] = useState(isEditing);
   
   const [aiPrompt, setAiPrompt] = useState('');
+  const [aiMode, setAiMode] = useState<'generate' | 'edit'>('generate');
   const [generatingImage, setGeneratingImage] = useState(false);
   const [improvingText, setImprovingText] = useState(false);
   const [showAiPanel, setShowAiPanel] = useState(false);
@@ -141,14 +142,27 @@ const AddProduct: React.FC = () => {
     try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const parts: any[] = [];
-        let base64Image = "";
-        if (formData.imageUrl.startsWith("data:image")) base64Image = formData.imageUrl.split(',')[1];
-        else if (formData.imageUrl.startsWith("http")) {
-            const fetched = await urlToBase64(formData.imageUrl);
-            if (fetched) base64Image = fetched.split(',')[1];
+        
+        // LOGIC: Image Editing vs New Generation
+        if (aiMode === 'edit') {
+            let base64Image = "";
+            if (formData.imageUrl.startsWith("data:image")) {
+                base64Image = formData.imageUrl.split(',')[1];
+            } else if (formData.imageUrl.startsWith("http")) {
+                const fetched = await urlToBase64(formData.imageUrl);
+                if (fetched) base64Image = fetched.split(',')[1];
+            }
+
+            if (base64Image) {
+                parts.push({ inlineData: { mimeType: 'image/png', data: base64Image } });
+            } else {
+                alert("Cannot edit: No valid existing image found. Switch to 'Generate New'.");
+                setGeneratingImage(false);
+                return;
+            }
         }
 
-        if (base64Image) parts.push({ inlineData: { mimeType: 'image/png', data: base64Image } });
+        // Add the text prompt
         parts.push({ text: aiPrompt });
 
         const response = await ai.models.generateContent({
@@ -167,7 +181,6 @@ const AddProduct: React.FC = () => {
         }
         if (newImage) {
             setFormData(prev => ({ ...prev, imageUrl: newImage }));
-            setShowAiPanel(false);
             setAiPrompt("");
         } else alert("No image generated.");
     } catch (e) { alert("AI Image Generation failed."); } finally { setGeneratingImage(false); }
@@ -285,16 +298,45 @@ const AddProduct: React.FC = () => {
               <div className="flex justify-between items-center mb-2 pl-1">
                   <label className="block text-sm font-medium text-gray-200">Cover Image</label>
                   <button type="button" onClick={() => setShowAiPanel(!showAiPanel)} className="flex items-center gap-1.5 text-xs font-bold text-blue-300 hover:text-white bg-blue-500/20 hover:bg-blue-500/40 px-3 py-1 rounded-full transition-colors border border-blue-500/30">
-                    <Sparkles className="w-3 h-3" /> Magic Edit
+                    <Sparkles className="w-3 h-3" /> AI Studio
                   </button>
               </div>
 
               {showAiPanel && (
-                <div className="mb-4 glass-card p-4 rounded-2xl animate-in slide-in-from-top-2">
+                <div className="mb-6 glass-card p-5 rounded-2xl animate-in slide-in-from-top-2 border border-blue-500/30">
+                    {/* AI Mode Toggle */}
+                    <div className="flex bg-black/40 rounded-lg p-1 mb-4 border border-white/10 w-fit">
+                        <button 
+                            type="button"
+                            onClick={() => setAiMode('generate')}
+                            className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-2 ${aiMode === 'generate' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            <Sparkles className="w-3 h-3" /> Generate New
+                        </button>
+                        <button 
+                            type="button"
+                            onClick={() => setAiMode('edit')}
+                            className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-2 ${aiMode === 'edit' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            <Layers className="w-3 h-3" /> Edit Current
+                        </button>
+                    </div>
+
+                    <p className="text-xs text-blue-200 mb-3 font-medium">
+                        {aiMode === 'generate' ? "Create a completely new image from text." : "Edit or enhance the current image using a text prompt."}
+                    </p>
+
                     <div className="flex gap-2">
-                        <input type="text" placeholder="Prompt: 'Cyberpunk style', 'Add neon lights'" className="glass-input flex-1 px-3 py-2 rounded-xl text-sm outline-none" value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} />
-                        <button type="button" onClick={handleGenerateImage} disabled={generatingImage || !aiPrompt} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-500 flex items-center gap-2">
-                            {generatingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Gen
+                        <input 
+                            type="text" 
+                            placeholder={aiMode === 'generate' ? "Cyberpunk city, neon lights, 4k..." : "Add a red glow, make it night time..."} 
+                            className="glass-input flex-1 px-4 py-2 rounded-xl text-sm outline-none" 
+                            value={aiPrompt} 
+                            onChange={(e) => setAiPrompt(e.target.value)} 
+                        />
+                        <button type="button" onClick={handleGenerateImage} disabled={generatingImage || !aiPrompt} className="bg-blue-600 text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-blue-500 flex items-center gap-2 shadow-lg shadow-blue-500/20">
+                            {generatingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : (aiMode === 'edit' ? <RefreshCcw className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />)}
+                            {aiMode === 'edit' ? 'Update' : 'Generate'}
                         </button>
                     </div>
                 </div>
@@ -304,7 +346,15 @@ const AddProduct: React.FC = () => {
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-300"><ImageIcon className="w-4 h-4" /></div>
                 <input required type="url" placeholder="https://..." className="glass-input w-full pl-11 pr-4 py-3 rounded-2xl outline-none" value={formData.imageUrl} onChange={e => setFormData({...formData, imageUrl: e.target.value})} />
               </div>
-              {formData.imageUrl && <div className="mt-4 relative w-full h-48 rounded-2xl overflow-hidden border border-white/10"><img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" /></div>}
+              {formData.imageUrl && <div className="mt-4 relative w-full h-48 rounded-2xl overflow-hidden border border-white/10 group">
+                  <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                  {/* Visual indicator for edit mode source */}
+                  {showAiPanel && aiMode === 'edit' && (
+                      <div className="absolute inset-0 bg-blue-500/20 border-4 border-blue-500/50 flex items-center justify-center">
+                          <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">Source for Editing</span>
+                      </div>
+                  )}
+              </div>}
             </div>
             
             {/* Video Generator */}
@@ -316,9 +366,9 @@ const AddProduct: React.FC = () => {
                     </button>
                 </div>
                  {showVideoPanel && (
-                    <div className="mb-4 glass-card p-4 rounded-2xl animate-in slide-in-from-top-2">
+                    <div className="mb-4 glass-card p-4 rounded-2xl animate-in slide-in-from-top-2 border border-indigo-500/30">
                         <textarea placeholder="Describe movement..." className="glass-input w-full px-3 py-2 rounded-xl text-sm outline-none mb-2" value={videoPrompt} onChange={(e) => setVideoPrompt(e.target.value)} />
-                        <button type="button" onClick={handleGenerateVideo} disabled={generatingVideo || !formData.imageUrl} className="w-full bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-500 flex items-center justify-center gap-2">
+                        <button type="button" onClick={handleGenerateVideo} disabled={generatingVideo || !formData.imageUrl} className="w-full bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-500 flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20">
                             {generatingVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Video className="w-4 h-4" />} Generate Video
                         </button>
                     </div>
