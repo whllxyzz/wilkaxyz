@@ -8,7 +8,8 @@ import Admin from './pages/Admin';
 import AddProduct from './pages/AddProduct';
 import PaymentGateway from './pages/PaymentGateway';
 import { ToastProvider } from './components/ToastContext';
-import { getStoreSettings } from './services/mockApi';
+import { getStoreSettings, IS_CLOUD_MODE } from './services/mockApi';
+import { AlertTriangle } from 'lucide-react';
 
 interface ErrorBoundaryProps {
   children?: ReactNode;
@@ -97,6 +98,14 @@ const Layout: React.FC<{children: React.ReactNode}> = ({ children }) => {
          <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px]"></div>
          <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px]"></div>
       </div>
+
+      {/* OFFLINE MODE WARNING BANNER */}
+      {!IS_CLOUD_MODE && (
+        <div className="fixed bottom-0 left-0 right-0 bg-red-600 text-white p-2 text-center text-xs font-bold z-[9999] flex items-center justify-center gap-2">
+            <AlertTriangle className="w-4 h-4" />
+            ⚠️ OFFLINE MODE: Data is NOT syncing between devices. Please configure Firebase in 'services/mockApi.ts'.
+        </div>
+      )}
     </div>
   );
 };

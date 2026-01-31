@@ -3,17 +3,21 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc, addDoc, query, where } from 'firebase/firestore';
 
 // ==========================================
-// KONFIGURASI DATABASE (FIREBASE)
+// 🔴 BAGIAN INI WAJIB DIGANTI AGAR ONLINE 🔴
 // ==========================================
-// 1. Buka https://console.firebase.google.com/
-// 2. Buat Project Baru -> Continue -> Continue
-// 3. Masuk ke Project Settings -> General -> Scroll ke bawah "Your apps" -> Pilih icon Web (</>)
-// 4. Register app, lalu copy "const firebaseConfig = { ... }"
-// 5. PASTE CONFIG DI BAWAH INI MENGGANTIKAN DUMMY DATA:
-// ==========================================
+// Copy config dari: Firebase Console -> Project Settings -> General -> Your Apps -> SDK Setup and Config
+// Paste di dalam kurung kurawal di bawah ini:
 
 const firebaseConfig = {
-  apiKey: "GANTI_DENGAN_API_KEY_DARI_FIREBASE", // Contoh: "AIzaSyD..."
+  // CONTOH FORMAT YANG BENAR (GANTI DENGAN PUNYA ANDA):
+  // apiKey: "AIzaSyDxxxxxxxxx...",
+  // authDomain: "tokosaya.firebaseapp.com",
+  // projectId: "tokosaya",
+  // storageBucket: "tokosaya.appspot.com",
+  // messagingSenderId: "82347...",
+  // appId: "1:82347...:web:..."
+  
+  apiKey: "GANTI_DENGAN_API_KEY_DARI_FIREBASE", 
   authDomain: "PROJECT_ID.firebaseapp.com",
   projectId: "PROJECT_ID",
   storageBucket: "PROJECT_ID.appspot.com",
@@ -22,9 +26,10 @@ const firebaseConfig = {
 };
 
 // ==========================================
+// JANGAN UBAH KODE DI BAWAH INI
+// ==========================================
 
 // Logic: Jika user belum ganti API Key, pakai LocalStorage (Offline Mode)
-// Jika user sudah ganti, pakai Firebase (Online Mode)
 export const IS_CLOUD_MODE = firebaseConfig.apiKey !== "GANTI_DENGAN_API_KEY_DARI_FIREBASE";
 
 let db: any;
