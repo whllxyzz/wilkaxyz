@@ -17,8 +17,8 @@
         background-color: #000;
         color: white;
         min-height: 100vh;
-        /* Cinematic Blurred Background */
-        background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop');
+        /* Optimized Background: Lower Resolution (w=1080 instead of 2500+) */
+        background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=60&w=1080&auto=format&fit=crop');
         background-attachment: fixed;
         background-size: cover;
         background-position: center;
@@ -30,8 +30,11 @@
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
         background: rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(20px);
+        /* Reduced blur for performance (20px -> 10px) */
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         z-index: -1;
+        pointer-events: none; /* Critical for click performance */
       }
 
       /* Custom Scrollbar */
@@ -50,20 +53,21 @@
         background: rgba(255,255,255,0.4); 
       }
 
-      /* VisionOS Glass Utility */
+      /* VisionOS Glass Utility - PERFORMANCE OPTIMIZED */
       .glass-panel {
-        background: rgba(255, 255, 255, 0.08); /* More transparent */
-        backdrop-filter: blur(40px); /* Heavy blur */
-        -webkit-backdrop-filter: blur(40px);
-        border: 1px solid rgba(255, 255, 255, 0.15); /* Crisper border */
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3); /* Deeper shadow */
+        background: rgba(20, 20, 20, 0.6); /* More solid background reduces composition cost */
+        /* Reduced blur from 40px to 16px to fix button lag */
+        backdrop-filter: blur(16px); 
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
       }
       
       /* For inner cards that need to pop */
       .glass-card {
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(12px);
+        backdrop-filter: blur(8px); /* Reduced blur */
       }
       .glass-card:hover {
         background: rgba(255, 255, 255, 0.1);
@@ -71,15 +75,15 @@
       }
 
       .glass-input {
-        background: rgba(0, 0, 0, 0.2);
+        background: rgba(0, 0, 0, 0.3);
         border: 1px solid rgba(255, 255, 255, 0.1);
         color: white;
-        transition: all 0.3s ease;
+        transition: border-color 0.2s ease; /* Removed 'all' transition to improve fps */
       }
       .glass-input:focus {
-        background: rgba(0, 0, 0, 0.4);
+        background: rgba(0, 0, 0, 0.5);
         border-color: rgba(255, 255, 255, 0.4);
-        box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
       }
 
       /* Sidebar Navigation Icon Active State */

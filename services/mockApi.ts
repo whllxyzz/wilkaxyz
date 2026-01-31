@@ -46,6 +46,11 @@ const DB_KEYS = {
   REVIEWS: 'whllxyz_reviews'
 };
 
+// --- PERFORMANCE CACHE ---
+// Used to store data in memory to avoid calling Firebase on every page click
+let cacheProducts: Product[] | null = null;
+let cacheSettings: StoreSettings | null = null;
+
 // --- INITIAL DUMMY DATA (Hanya dipakai jika OFFLINE) ---
 const INITIAL_PRODUCTS: Product[] = [
   {
@@ -54,7 +59,7 @@ const INITIAL_PRODUCTS: Product[] = [
     description: "Ini adalah data dummy karena Firebase belum dikoneksikan. Silakan edit services/mockApi.ts",
     price: 100000,
     category: "Software",
-    imageUrl: "https://images.unsplash.com/photo-1661956602116-aa6865609028",
+    imageUrl: "https://images.unsplash.com/photo-1661956602116-aa6865609028?q=60&w=600",
     fileUrl: "#",
     createdAt: new Date().toISOString()
   }
@@ -64,7 +69,6 @@ const DEFAULT_SETTINGS: StoreSettings = {
   bankName: 'BCA', accountNumber: '123', accountHolder: 'Admin', instructions: 'Transfer', adminPhone: '628123', paymentMethods: [], backgroundImage: ''
 };
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const triggerUpdate = (key: string) => {
   window.dispatchEvent(new Event('storage'));
   window.dispatchEvent(new CustomEvent('db_update', { detail: { key } }));
@@ -77,11 +81,15 @@ const triggerUpdate = (key: string) => {
 // --- SETTINGS ---
 export const getStoreSettings = async (): Promise<ApiResponse<StoreSettings>> => {
   if (IS_CLOUD_MODE && db) {
+    // Return cache if available to speed up loading
+    if (cacheSettings) return { success: true, data: cacheSettings };
+    
     try {
       const docRef = doc(db, "settings", "general");
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        return { success: true, data: docSnap.data() as StoreSettings };
+        cacheSettings = docSnap.data() as StoreSettings;
+        return { success: true, data: cacheSettings };
       }
       return { success: true, data: DEFAULT_SETTINGS };
     } catch (e) {
@@ -95,6 +103,7 @@ export const getStoreSettings = async (): Promise<ApiResponse<StoreSettings>> =>
 };
 
 export const saveStoreSettings = async (settings: StoreSettings): Promise<ApiResponse<StoreSettings>> => {
+  cacheSettings = settings; // Update cache immediately
   if (IS_CLOUD_MODE && db) {
     try {
       await setDoc(doc(db, "settings", "general"), settings);
@@ -109,10 +118,14 @@ export const saveStoreSettings = async (settings: StoreSettings): Promise<ApiRes
 // --- PRODUCTS ---
 export const getProducts = async (): Promise<ApiResponse<Product[]>> => {
   if (IS_CLOUD_MODE && db) {
+    // Return cache if available
+    if (cacheProducts) return { success: true, data: cacheProducts };
+
     try {
       const querySnapshot = await getDocs(collection(db, "products"));
       const products: Product[] = [];
       querySnapshot.forEach((doc) => products.push(doc.data() as Product));
+      cacheProducts = products; // Store in cache
       return { success: true, data: products };
     } catch (e) { return { success: false, message: "Cloud Error" }; }
   }
@@ -122,6 +135,12 @@ export const getProducts = async (): Promise<ApiResponse<Product[]>> => {
 
 export const getProductById = async (id: string): Promise<ApiResponse<Product>> => {
   if (IS_CLOUD_MODE && db) {
+    // Try to find in cache first
+    if (cacheProducts) {
+        const found = cacheProducts.find(p => p._id === id);
+        if (found) return { success: true, data: found };
+    }
+
     try {
        const q = query(collection(db, "products"), where("_id", "==", id));
        const querySnapshot = await getDocs(q);
@@ -144,6 +163,7 @@ export const createProduct = async (productData: Omit<Product, '_id' | 'createdA
   };
 
   if (IS_CLOUD_MODE && db) {
+    cacheProducts = null; // Invalidate cache so next fetch gets new data
     try {
       await setDoc(doc(db, "products", newProduct._id), newProduct);
       return { success: true, data: newProduct };
@@ -158,6 +178,7 @@ export const createProduct = async (productData: Omit<Product, '_id' | 'createdA
 
 export const updateProduct = async (id: string, productData: Partial<Product>): Promise<ApiResponse<Product>> => {
   if (IS_CLOUD_MODE && db) {
+     cacheProducts = null; // Invalidate cache
      try {
         await updateDoc(doc(db, "products", id), productData);
         return { success: true, data: { ...productData, _id: id } as Product };
@@ -175,6 +196,7 @@ export const updateProduct = async (id: string, productData: Partial<Product>): 
 
 export const deleteProduct = async (id: string): Promise<ApiResponse<null>> => {
   if (IS_CLOUD_MODE && db) {
+    cacheProducts = null; // Invalidate cache
     try {
       await deleteDoc(doc(db, "products", id));
       return { success: true, message: "Deleted" };
@@ -310,6 +332,7 @@ export const getTransactions = async (): Promise<ApiResponse<Transaction[]>> => 
 export const verifyDownloadToken = async (token: string): Promise<ApiResponse<{url: string, product: string, transaction: Transaction}>> => {
   if (IS_CLOUD_MODE && db) {
       try {
+          // This must be optimized with an Index in Firebase, but query is fast enough for small datasets
           const q = query(collection(db, "transactions"), where("downloadToken", "==", token));
           const snapshot = await getDocs(q);
           if (snapshot.empty) return { success: false, message: "Invalid Token" };

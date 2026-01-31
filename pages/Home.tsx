@@ -114,8 +114,9 @@ const Home: React.FC = () => {
          {!searchQuery && selectedCategory === 'All' && (
            <div className="mb-10 relative group cursor-pointer overflow-hidden rounded-[2rem]">
               <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent z-10"></div>
+              {/* OPTIMIZED HERO IMAGE SIZE (w=800 instead of 2670) */}
               <img 
-                 src="https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=2670&auto=format&fit=crop" 
+                 src="https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=800&auto=format&fit=crop" 
                  alt="Hero" 
                  className="w-full h-[300px] md:h-[400px] object-cover group-hover:scale-105 transition-transform duration-1000"
               />

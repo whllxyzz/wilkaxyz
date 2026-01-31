@@ -14,13 +14,26 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     minimumFractionDigits: 0
   });
 
+  // Helper to optimize unsplash images for cards (limit width to 600px)
+  const getOptimizedImage = (url: string) => {
+     if (url.includes('images.unsplash.com')) {
+         // Replace existing w parameter or add it
+         if (url.includes('w=')) {
+             return url.replace(/w=\d+/, 'w=600&q=80');
+         }
+         return `${url}&w=600&q=80`;
+     }
+     return url;
+  };
+
   return (
     <div className="group relative rounded-[2rem] overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] bg-black/20 border border-white/5">
       {/* Background Image with Overlay */}
       <div className="aspect-[4/5] w-full relative">
          <img 
-            src={product.imageUrl} 
+            src={getOptimizedImage(product.imageUrl)} 
             alt={product.name} 
+            loading="lazy" 
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
          />
          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-80 transition-opacity duration-300"></div>
