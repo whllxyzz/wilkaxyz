@@ -320,4 +320,50 @@ export const verifyDownloadToken = async (token: string): Promise<ApiResponse<{u
           const prodRes = await getProductById(trx.productId);
           if (!prodRes.data) return { success: false, message: "Product missing" };
           
-          return { success: true, data: { url: prodRes.data.fileUrl, product: prodRes.data.name,
+          return { success: true, data: { url: prodRes.data.fileUrl, product: prodRes.data.name, transaction: trx } };
+      } catch (e) { return { success: false, message: "Error" }; }
+  }
+  const stored = localStorage.getItem(DB_KEYS.TRANSACTIONS);
+  const transactions = stored ? JSON.parse(stored) : [];
+  const trx = transactions.find((t: Transaction) => t.downloadToken === token);
+  if (!trx || trx.status !== 'success') return { success: false, message: 'Invalid/Unpaid' };
+  
+  const prodRes = await getProductById(trx.productId);
+  return prodRes.data ? { success: true, data: { url: prodRes.data.fileUrl, product: prodRes.data.name, transaction: trx } } : { success: false };
+};
+
+// --- REVIEWS ---
+export const createReview = async (reviewData: Omit<Review, '_id' | 'createdAt'>): Promise<ApiResponse<Review>> => {
+  const newReview: Review = { ...reviewData, _id: `rev_${Date.now()}`, createdAt: new Date().toISOString() };
+
+  if (IS_CLOUD_MODE && db) {
+     try {
+         await setDoc(doc(db, "reviews", newReview._id), newReview);
+         return { success: true, data: newReview };
+     } catch (e) { return { success: false, message: "Error" }; }
+  }
+  const stored = localStorage.getItem(DB_KEYS.REVIEWS);
+  const reviews = stored ? JSON.parse(stored) : [];
+  localStorage.setItem(DB_KEYS.REVIEWS, JSON.stringify([newReview, ...reviews]));
+  triggerUpdate(DB_KEYS.REVIEWS);
+  return { success: true, data: newReview };
+};
+
+export const getReviewsByProductId = async (productId: string): Promise<ApiResponse<Review[]>> => {
+  if (IS_CLOUD_MODE && db) {
+      try {
+          const q = query(collection(db, "reviews"), where("productId", "==", productId));
+          const snapshot = await getDocs(q);
+          const reviews: Review[] = [];
+          snapshot.forEach(d => reviews.push(d.data() as Review));
+          return { success: true, data: reviews };
+      } catch (e) { return { success: false, message: "Error" }; }
+  }
+  const stored = localStorage.getItem(DB_KEYS.REVIEWS);
+  const reviews = stored ? JSON.parse(stored) : [];
+  return { success: true, data: reviews.filter((r: Review) => r.productId === productId) };
+};
+
+// Export these for Admin Panel
+export const updateCloudConfig = () => { alert("Harap edit file services/mockApi.ts langsung."); return false; };
+export const disconnectCloud = () => { alert("Harap edit file services/mockApi.ts langsung."); };
