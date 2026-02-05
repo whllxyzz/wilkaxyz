@@ -1,43 +1,13 @@
 import { Product, Transaction, ApiResponse, StoreSettings, Review, PaymentMethod } from '../types';
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc, addDoc, query, where } from 'firebase/firestore';
 
 // ============================================================================
-// FIREBASE CONFIGURATION
+// OFFLINE / LOCAL STORAGE CONFIGURATION
 // ============================================================================
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAFxvSKso3_4EtADN8UNUg6Ah8shTQqmtY",
-  authDomain: "wilka-90494.firebaseapp.com",
-  projectId: "wilka-90494",
-  storageBucket: "wilka-90494.firebasestorage.app",
-  messagingSenderId: "186984944673",
-  appId: "1:186984944673:web:2d17ce4ae4ca3986803f60",
-  measurementId: "G-RS9NQFE4YF"
-};
+// Force Cloud Mode to FALSE to prevent any network calls or errors
+export const IS_CLOUD_MODE = false;
 
-// ============================================================================
-// ⚠️ JANGAN UBAH KODE DI BAWAH GARIS INI ⚠️
-// ============================================================================
-
-// Logic Check: Apakah user sudah paste config?
-const isConfigured = firebaseConfig.apiKey && firebaseConfig.apiKey !== "PASTE_CONFIG_DARI_FIREBASE_DISINI" && firebaseConfig.apiKey !== "GANTI_DENGAN_API_KEY_ANDA";
-export const IS_CLOUD_MODE = isConfigured;
-
-let db: any;
-
-// Initialize Firebase
-if (IS_CLOUD_MODE) {
-  try {
-    const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    console.log("🔥 Connected to Firebase Cloud Database");
-  } catch (e) {
-    console.error("Firebase Init Error - Cek Config Anda:", e);
-  }
-} else {
-  console.log("⚠️ Running in LOCAL STORAGE Mode (Offline)");
-}
+console.log("🚀 Running in LOCAL STORAGE Mode (Offline - Fast & Stable)");
 
 const DB_KEYS = {
   PRODUCTS: 'whllxyz_products',
@@ -46,17 +16,12 @@ const DB_KEYS = {
   REVIEWS: 'whllxyz_reviews'
 };
 
-// --- PERFORMANCE CACHE ---
-// Used to store data in memory to avoid calling Firebase on every page click
-let cacheProducts: Product[] | null = null;
-let cacheSettings: StoreSettings | null = null;
-
-// --- INITIAL DUMMY DATA (Hanya dipakai jika OFFLINE) ---
+// --- INITIAL DUMMY DATA ---
 const INITIAL_PRODUCTS: Product[] = [
   {
     _id: "prod_demo_1",
-    name: "Contoh Produk (Offline)",
-    description: "Ini adalah data dummy karena Firebase belum dikoneksikan. Silakan edit services/mockApi.ts",
+    name: "Contoh Produk (Local)",
+    description: "Produk ini tersimpan di browser Anda. Tidak perlu koneksi internet database.",
     price: 100000,
     category: "Software",
     imageUrl: "https://images.unsplash.com/photo-1661956602116-aa6865609028?q=60&w=600",
@@ -75,41 +40,16 @@ const triggerUpdate = (key: string) => {
 };
 
 // =========================================================
-// HYBRID FUNCTIONS (Firebase Priority)
+// LOCAL STORAGE FUNCTIONS (No Async Delays)
 // =========================================================
 
 // --- SETTINGS ---
 export const getStoreSettings = async (): Promise<ApiResponse<StoreSettings>> => {
-  if (IS_CLOUD_MODE && db) {
-    // Return cache if available to speed up loading
-    if (cacheSettings) return { success: true, data: cacheSettings };
-    
-    try {
-      const docRef = doc(db, "settings", "general");
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        cacheSettings = docSnap.data() as StoreSettings;
-        return { success: true, data: cacheSettings };
-      }
-      return { success: true, data: DEFAULT_SETTINGS };
-    } catch (e) {
-      console.error(e);
-      return { success: false, message: "Cloud Error" };
-    }
-  }
-  // Fallback Local
   const stored = localStorage.getItem(DB_KEYS.SETTINGS);
   return { success: true, data: stored ? JSON.parse(stored) : DEFAULT_SETTINGS };
 };
 
 export const saveStoreSettings = async (settings: StoreSettings): Promise<ApiResponse<StoreSettings>> => {
-  cacheSettings = settings; // Update cache immediately
-  if (IS_CLOUD_MODE && db) {
-    try {
-      await setDoc(doc(db, "settings", "general"), settings);
-      return { success: true, data: settings };
-    } catch (e) { return { success: false, message: "Save Error" }; }
-  }
   localStorage.setItem(DB_KEYS.SETTINGS, JSON.stringify(settings));
   triggerUpdate(DB_KEYS.SETTINGS);
   return { success: true, data: settings };
@@ -117,37 +57,11 @@ export const saveStoreSettings = async (settings: StoreSettings): Promise<ApiRes
 
 // --- PRODUCTS ---
 export const getProducts = async (): Promise<ApiResponse<Product[]>> => {
-  if (IS_CLOUD_MODE && db) {
-    // Return cache if available
-    if (cacheProducts) return { success: true, data: cacheProducts };
-
-    try {
-      const querySnapshot = await getDocs(collection(db, "products"));
-      const products: Product[] = [];
-      querySnapshot.forEach((doc) => products.push(doc.data() as Product));
-      cacheProducts = products; // Store in cache
-      return { success: true, data: products };
-    } catch (e) { return { success: false, message: "Cloud Error" }; }
-  }
   const stored = localStorage.getItem(DB_KEYS.PRODUCTS);
   return { success: true, data: stored ? JSON.parse(stored) : INITIAL_PRODUCTS };
 };
 
 export const getProductById = async (id: string): Promise<ApiResponse<Product>> => {
-  if (IS_CLOUD_MODE && db) {
-    // Try to find in cache first
-    if (cacheProducts) {
-        const found = cacheProducts.find(p => p._id === id);
-        if (found) return { success: true, data: found };
-    }
-
-    try {
-       const q = query(collection(db, "products"), where("_id", "==", id));
-       const querySnapshot = await getDocs(q);
-       if (!querySnapshot.empty) return { success: true, data: querySnapshot.docs[0].data() as Product };
-       return { success: false, message: "Not found" };
-    } catch (e) { return { success: false, message: "Cloud Error" }; }
-  }
   const stored = localStorage.getItem(DB_KEYS.PRODUCTS);
   const products: Product[] = stored ? JSON.parse(stored) : INITIAL_PRODUCTS;
   const product = products.find(p => p._id === id);
@@ -162,13 +76,6 @@ export const createProduct = async (productData: Omit<Product, '_id' | 'createdA
     averageRating: 0, totalReviews: 0
   };
 
-  if (IS_CLOUD_MODE && db) {
-    cacheProducts = null; // Invalidate cache so next fetch gets new data
-    try {
-      await setDoc(doc(db, "products", newProduct._id), newProduct);
-      return { success: true, data: newProduct };
-    } catch (e) { return { success: false, message: "Create Error" }; }
-  }
   const stored = localStorage.getItem(DB_KEYS.PRODUCTS);
   const products = stored ? JSON.parse(stored) : INITIAL_PRODUCTS;
   localStorage.setItem(DB_KEYS.PRODUCTS, JSON.stringify([newProduct, ...products]));
@@ -177,13 +84,6 @@ export const createProduct = async (productData: Omit<Product, '_id' | 'createdA
 };
 
 export const updateProduct = async (id: string, productData: Partial<Product>): Promise<ApiResponse<Product>> => {
-  if (IS_CLOUD_MODE && db) {
-     cacheProducts = null; // Invalidate cache
-     try {
-        await updateDoc(doc(db, "products", id), productData);
-        return { success: true, data: { ...productData, _id: id } as Product };
-     } catch (e) { return { success: false, message: "Update Error" }; }
-  }
   const stored = localStorage.getItem(DB_KEYS.PRODUCTS);
   const products = stored ? JSON.parse(stored) : INITIAL_PRODUCTS;
   const index = products.findIndex((p: Product) => p._id === id);
@@ -195,13 +95,6 @@ export const updateProduct = async (id: string, productData: Partial<Product>): 
 };
 
 export const deleteProduct = async (id: string): Promise<ApiResponse<null>> => {
-  if (IS_CLOUD_MODE && db) {
-    cacheProducts = null; // Invalidate cache
-    try {
-      await deleteDoc(doc(db, "products", id));
-      return { success: true, message: "Deleted" };
-    } catch (e) { return { success: false, message: "Delete Error" }; }
-  }
   const stored = localStorage.getItem(DB_KEYS.PRODUCTS);
   const products = stored ? JSON.parse(stored) : INITIAL_PRODUCTS;
   localStorage.setItem(DB_KEYS.PRODUCTS, JSON.stringify(products.filter((p: Product) => p._id !== id)));
@@ -227,12 +120,6 @@ export const createTransaction = async (productId: string, paymentMethod: string
     resi: '' 
   };
 
-  if (IS_CLOUD_MODE && db) {
-    try {
-      await setDoc(doc(db, "transactions", transaction._id), transaction);
-      return { success: true, data: transaction };
-    } catch (e) { return { success: false, message: "Trx Error" }; }
-  }
   const stored = localStorage.getItem(DB_KEYS.TRANSACTIONS);
   const transactions = stored ? JSON.parse(stored) : [];
   localStorage.setItem(DB_KEYS.TRANSACTIONS, JSON.stringify([transaction, ...transactions]));
@@ -241,13 +128,6 @@ export const createTransaction = async (productId: string, paymentMethod: string
 };
 
 export const getTransactionById = async (id: string): Promise<ApiResponse<Transaction>> => {
-  if (IS_CLOUD_MODE && db) {
-    try {
-      const docSnap = await getDoc(doc(db, "transactions", id));
-      if (docSnap.exists()) return { success: true, data: docSnap.data() as Transaction };
-      return { success: false, message: "Not found" };
-    } catch(e) { return { success: false, message: "Error" }; }
-  }
   const stored = localStorage.getItem(DB_KEYS.TRANSACTIONS);
   const transactions = stored ? JSON.parse(stored) : [];
   const trx = transactions.find((t: Transaction) => t._id === id);
@@ -255,14 +135,6 @@ export const getTransactionById = async (id: string): Promise<ApiResponse<Transa
 };
 
 export const uploadTransactionProof = async (id: string, base64Image: string): Promise<ApiResponse<Transaction>> => {
-  if (IS_CLOUD_MODE && db) {
-    try {
-        const ref = doc(db, "transactions", id);
-        await updateDoc(ref, { proofImageUrl: base64Image, status: 'waiting_verification' });
-        const updated = await getDoc(ref);
-        return { success: true, data: updated.data() as Transaction };
-    } catch(e) { return { success: false, message: "Upload Error" }; }
-  }
   const stored = localStorage.getItem(DB_KEYS.TRANSACTIONS);
   const transactions = stored ? JSON.parse(stored) : [];
   const index = transactions.findIndex((t: Transaction) => t._id === id);
@@ -275,14 +147,6 @@ export const uploadTransactionProof = async (id: string, base64Image: string): P
 };
 
 export const updateTransactionStatus = async (id: string, status: 'success' | 'failed'): Promise<ApiResponse<Transaction>> => {
-   if (IS_CLOUD_MODE && db) {
-     try {
-       const ref = doc(db, "transactions", id);
-       await updateDoc(ref, { status });
-       const updated = await getDoc(ref);
-       return { success: true, data: updated.data() as Transaction };
-     } catch(e) { return { success: false, message: "Error" }; }
-   }
    const stored = localStorage.getItem(DB_KEYS.TRANSACTIONS);
    const transactions = stored ? JSON.parse(stored) : [];
    const index = transactions.findIndex((t: Transaction) => t._id === id);
@@ -296,14 +160,6 @@ export const updateTransactionStatus = async (id: string, status: 'success' | 'f
 };
 
 export const updateTransactionResi = async (id: string, resi: string): Promise<ApiResponse<Transaction>> => {
-    if (IS_CLOUD_MODE && db) {
-        try {
-            const ref = doc(db, "transactions", id);
-            await updateDoc(ref, { resi });
-            const updated = await getDoc(ref);
-            return { success: true, data: updated.data() as Transaction };
-        } catch(e) { return { success: false, message: "Error" }; }
-    }
     const stored = localStorage.getItem(DB_KEYS.TRANSACTIONS);
     const transactions = stored ? JSON.parse(stored) : [];
     const index = transactions.findIndex((t: Transaction) => t._id === id);
@@ -317,35 +173,11 @@ export const updateTransactionResi = async (id: string, resi: string): Promise<A
 };
 
 export const getTransactions = async (): Promise<ApiResponse<Transaction[]>> => {
-  if (IS_CLOUD_MODE && db) {
-    try {
-      const q = await getDocs(collection(db, "transactions"));
-      const trxs: Transaction[] = [];
-      q.forEach(d => trxs.push(d.data() as Transaction));
-      return { success: true, data: trxs.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) };
-    } catch (e) { return { success: false, message: "Error" }; }
-  }
   const stored = localStorage.getItem(DB_KEYS.TRANSACTIONS);
   return { success: true, data: stored ? JSON.parse(stored) : [] };
 };
 
 export const verifyDownloadToken = async (token: string): Promise<ApiResponse<{url: string, product: string, transaction: Transaction}>> => {
-  if (IS_CLOUD_MODE && db) {
-      try {
-          // This must be optimized with an Index in Firebase, but query is fast enough for small datasets
-          const q = query(collection(db, "transactions"), where("downloadToken", "==", token));
-          const snapshot = await getDocs(q);
-          if (snapshot.empty) return { success: false, message: "Invalid Token" };
-          
-          const trx = snapshot.docs[0].data() as Transaction;
-          if (trx.status !== 'success') return { success: false, message: "Payment not verified" };
-          
-          const prodRes = await getProductById(trx.productId);
-          if (!prodRes.data) return { success: false, message: "Product missing" };
-          
-          return { success: true, data: { url: prodRes.data.fileUrl, product: prodRes.data.name, transaction: trx } };
-      } catch (e) { return { success: false, message: "Error" }; }
-  }
   const stored = localStorage.getItem(DB_KEYS.TRANSACTIONS);
   const transactions = stored ? JSON.parse(stored) : [];
   const trx = transactions.find((t: Transaction) => t.downloadToken === token);
@@ -358,13 +190,6 @@ export const verifyDownloadToken = async (token: string): Promise<ApiResponse<{u
 // --- REVIEWS ---
 export const createReview = async (reviewData: Omit<Review, '_id' | 'createdAt'>): Promise<ApiResponse<Review>> => {
   const newReview: Review = { ...reviewData, _id: `rev_${Date.now()}`, createdAt: new Date().toISOString() };
-
-  if (IS_CLOUD_MODE && db) {
-     try {
-         await setDoc(doc(db, "reviews", newReview._id), newReview);
-         return { success: true, data: newReview };
-     } catch (e) { return { success: false, message: "Error" }; }
-  }
   const stored = localStorage.getItem(DB_KEYS.REVIEWS);
   const reviews = stored ? JSON.parse(stored) : [];
   localStorage.setItem(DB_KEYS.REVIEWS, JSON.stringify([newReview, ...reviews]));
@@ -373,20 +198,11 @@ export const createReview = async (reviewData: Omit<Review, '_id' | 'createdAt'>
 };
 
 export const getReviewsByProductId = async (productId: string): Promise<ApiResponse<Review[]>> => {
-  if (IS_CLOUD_MODE && db) {
-      try {
-          const q = query(collection(db, "reviews"), where("productId", "==", productId));
-          const snapshot = await getDocs(q);
-          const reviews: Review[] = [];
-          snapshot.forEach(d => reviews.push(d.data() as Review));
-          return { success: true, data: reviews };
-      } catch (e) { return { success: false, message: "Error" }; }
-  }
   const stored = localStorage.getItem(DB_KEYS.REVIEWS);
   const reviews = stored ? JSON.parse(stored) : [];
   return { success: true, data: reviews.filter((r: Review) => r.productId === productId) };
 };
 
-// Export these for Admin Panel
-export const updateCloudConfig = () => { alert("Harap edit file services/mockApi.ts langsung."); return false; };
-export const disconnectCloud = () => { alert("Harap edit file services/mockApi.ts langsung."); };
+// Helper dummies (No-op)
+export const updateCloudConfig = () => false;
+export const disconnectCloud = () => {};

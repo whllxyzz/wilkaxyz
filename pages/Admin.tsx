@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getProducts, getTransactions, deleteProduct, getStoreSettings, saveStoreSettings, updateTransactionStatus, updateTransactionResi, IS_CLOUD_MODE } from '../services/mockApi';
+import { getProducts, getTransactions, deleteProduct, getStoreSettings, saveStoreSettings, updateTransactionStatus, updateTransactionResi } from '../services/mockApi';
 import { Product, Transaction, StoreSettings, PaymentMethod } from '../types';
-import { Plus, Trash2, Lock, Edit, DollarSign, ShoppingBag, TrendingUp, Save, CreditCard, Check, X, Eye, Phone, Wallet, QrCode, Loader2, LogOut, Calendar, Filter, ArrowUpDown, Search, Image as ImageIcon, Monitor, Upload, Cloud, HardDrive, AlertTriangle, ExternalLink, HelpCircle, ChevronRight, Copy, Terminal } from 'lucide-react';
+import { Plus, Trash2, Lock, Edit, DollarSign, ShoppingBag, TrendingUp, Save, CreditCard, Check, X, Eye, Phone, Wallet, QrCode, Loader2, LogOut, Calendar, Filter, ArrowUpDown, Search, Image as ImageIcon, Monitor, Upload, HardDrive, AlertTriangle, ChevronRight } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 
 // Theme Presets
@@ -22,7 +22,7 @@ const Admin: React.FC = () => {
   const [authError, setAuthError] = useState('');
 
   // Dashboard State
-  const [activeTab, setActiveTab] = useState<'products' | 'transactions' | 'history' | 'settings' | 'guide'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'transactions' | 'history' | 'settings'>('products');
   const [products, setProducts] = useState<Product[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   
@@ -62,13 +62,6 @@ const Admin: React.FC = () => {
     }
   }, []);
   
-  // Auto-switch to guide if offline
-  useEffect(() => {
-      if (isAuthenticated && !IS_CLOUD_MODE) {
-          setActiveTab('guide');
-      }
-  }, [isAuthenticated]);
-
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (tokenInput === 'WILKANIA') {
@@ -268,11 +261,10 @@ const Admin: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
             <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
-            <div className={`mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border ${IS_CLOUD_MODE ? 'bg-green-500/20 text-green-300 border-green-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'}`}>
-                {IS_CLOUD_MODE ? <Cloud className="w-3 h-3" /> : <HardDrive className="w-3 h-3" />}
-                {IS_CLOUD_MODE ? 'ONLINE (Cloud Connected)' : 'OFFLINE (Local Storage Only)'}
+            <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border bg-gray-500/20 text-gray-300 border-gray-500/30">
+                <HardDrive className="w-3 h-3" />
+                LOCAL MODE (Safe & Fast)
             </div>
-            {!IS_CLOUD_MODE && <div className="text-xs text-red-300 mt-1 cursor-pointer hover:underline" onClick={() => setActiveTab('guide')}>Database not connected. Click here for help.</div>}
         </div>
         <div className="flex gap-3">
             <button onClick={handleLogout} className="flex items-center gap-2 text-gray-200 hover:text-red-400 px-4 py-2 font-medium transition-colors">
@@ -299,138 +291,18 @@ const Admin: React.FC = () => {
 
       <div className="space-y-4">
         <div className="flex border-b border-white/10 overflow-x-auto">
-          {['products', 'transactions', 'history', 'settings', 'guide'].map(tab => (
+          {['products', 'transactions', 'history', 'settings'].map(tab => (
             <button 
                 key={tab} 
                 onClick={() => setActiveTab(tab as any)} 
                 className={`pb-3 px-4 capitalize font-medium border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === tab ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-300 hover:text-white'}`}
             >
-                {tab === 'guide' && !IS_CLOUD_MODE && <AlertTriangle className="w-3 h-3 text-red-400 animate-pulse" />}
-                {tab === 'guide' ? 'TUTORIAL FIREBASE' : tab === 'history' ? 'Order History' : tab}
+                {tab === 'history' ? 'Order History' : tab}
             </button>
           ))}
         </div>
 
         <div className="glass-panel rounded-xl overflow-hidden min-h-[400px]">
-          
-          {activeTab === 'guide' && (
-              <div className="p-8 max-w-5xl mx-auto text-gray-100">
-                  <div className="bg-gradient-to-br from-gray-900 to-slate-900 p-8 rounded-2xl border border-white/10 shadow-2xl">
-                      <h2 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
-                          <Cloud className="w-8 h-8 text-blue-400" />
-                          Tutorial Koneksi Database (Langkah-demi-Langkah)
-                      </h2>
-                      <p className="text-gray-400 mb-8 border-b border-white/10 pb-6">
-                        Ikuti panduan ini agar website Anda online sungguhan dan bisa diakses dari HP mana saja.
-                      </p>
-
-                      <div className="space-y-12">
-                          {/* STEP 1 */}
-                          <div className="flex gap-6">
-                              <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center font-bold text-white text-xl shrink-0 shadow-[0_0_15px_rgba(37,99,235,0.5)]">1</div>
-                              <div className="space-y-4 flex-1">
-                                  <h3 className="font-bold text-white text-xl">Buat Project Baru</h3>
-                                  <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                                      <ol className="list-decimal list-inside space-y-2 text-gray-300">
-                                          <li>Buka <a href="https://console.firebase.google.com/" target="_blank" className="text-blue-400 underline font-bold">Firebase Console (Klik Disini)</a>.</li>
-                                          <li>Klik kotak besar bertuliskan <strong>"Create a Project"</strong>.</li>
-                                          <li>Isi nama project (misal: <code>TokoDigitalSaya</code>). Klik Continue.</li>
-                                          <li>Matikan opsi <strong>"Enable Google Analytics"</strong> (Biar cepat & tidak ribet).</li>
-                                          <li>Klik tombol biru <strong>"Create Project"</strong>. Tunggu loading selesai, lalu klik Continue.</li>
-                                      </ol>
-                                  </div>
-                              </div>
-                          </div>
-
-                          {/* STEP 2 */}
-                          <div className="flex gap-6">
-                              <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center font-bold text-white text-xl shrink-0 shadow-[0_0_15px_rgba(147,51,234,0.5)]">2</div>
-                              <div className="space-y-4 flex-1">
-                                  <h3 className="font-bold text-white text-xl">Bikin Database (Firestore)</h3>
-                                  <p className="text-gray-400 text-sm">Ini tempat menyimpan data produk & transaksi Anda.</p>
-                                  <div className="bg-white/5 p-4 rounded-xl border border-white/10 grid md:grid-cols-2 gap-4">
-                                      <div>
-                                          <strong className="text-purple-300 block mb-2">Langkah A: Masuk Menu</strong>
-                                          <ul className="list-disc list-inside text-gray-300 space-y-1 text-sm">
-                                              <li>Di menu kiri layar, cari bagian <strong>"Build"</strong>.</li>
-                                              <li>Klik <strong>"Firestore Database"</strong>.</li>
-                                              <li>Klik tombol <strong>"Create Database"</strong>.</li>
-                                          </ul>
-                                      </div>
-                                      <div>
-                                          <strong className="text-red-300 block mb-2">Langkah B: PENTING!</strong>
-                                          <ul className="list-disc list-inside text-gray-300 space-y-1 text-sm">
-                                              <li>Akan muncul pilihan lokasi, pilih <strong>"Singapore"</strong> (supaya cepat).</li>
-                                              <li>Akan muncul pilihan Mode. Pilih <strong>"START IN TEST MODE"</strong>.</li>
-                                              <li>Klik <strong>Enable</strong>.</li>
-                                          </ul>
-                                      </div>
-                                  </div>
-                              </div>
-                          </div>
-
-                          {/* STEP 3 */}
-                          <div className="flex gap-6">
-                              <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center font-bold text-white text-xl shrink-0 shadow-[0_0_15px_rgba(22,163,74,0.5)]">3</div>
-                              <div className="space-y-4 flex-1">
-                                  <h3 className="font-bold text-white text-xl">Ambil Kunci Rahasia (Config)</h3>
-                                  <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                                      <ol className="list-decimal list-inside space-y-2 text-gray-300">
-                                          <li>Klik ikon <strong>Gear (⚙️)</strong> di pojok kiri atas (sebelah tulisan "Project Overview").</li>
-                                          <li>Pilih menu <strong>"Project Settings"</strong>.</li>
-                                          <li>Scroll ke paling bawah halaman.</li>
-                                          <li>Anda akan melihat deretan ikon bulat. Klik ikon <strong>`&lt;/&gt;` (Web)</strong>.</li>
-                                          <li>Isi nama aplikasi (bebas, misal: "WebToko"). Klik "Register App".</li>
-                                          <li>Akan muncul kode panjang. Cari tulisan <code>const firebaseConfig = ...</code></li>
-                                          <li>Copy kode di dalam kurung kurawal <code>{'{ ... }'}</code>.</li>
-                                      </ol>
-                                  </div>
-                              </div>
-                          </div>
-
-                          {/* STEP 4 */}
-                          <div className="flex gap-6">
-                              <div className="w-12 h-12 bg-orange-600 rounded-full flex items-center justify-center font-bold text-white text-xl shrink-0 shadow-[0_0_15px_rgba(234,88,12,0.5)]">4</div>
-                              <div className="space-y-4 flex-1">
-                                  <h3 className="font-bold text-white text-xl">Tempel Kode (Paste)</h3>
-                                  <p className="text-gray-400">Kembali ke kode editor Anda. Buka file <code className="text-yellow-400">services/mockApi.ts</code>.</p>
-                                  
-                                  <div className="bg-black/80 p-6 rounded-xl border border-white/20 font-mono text-sm relative overflow-hidden">
-                                      <div className="absolute top-0 left-0 w-full bg-white/10 px-4 py-1 text-xs text-gray-400 border-b border-white/5 flex items-center gap-2">
-                                          <Terminal className="w-3 h-3" /> services/mockApi.ts
-                                      </div>
-                                      <div className="mt-4 text-gray-500">
-                                          // ... kode lain ...
-                                      </div>
-                                      <div className="my-2 text-green-400 font-bold">
-                                          // ⬇️ ⬇️ TEMPEL KODE ANDA DI SINI (TIMPA BAGIAN INI) ⬇️ ⬇️
-                                      </div>
-                                      <div className="text-blue-300">
-                                          const firebaseConfig = {'{'}<br/>
-                                          &nbsp;&nbsp;apiKey: "AIzaSyDxxxx...", <span className="text-gray-500">// Pastikan ini bukan "GANTI_DENGAN..."</span><br/>
-                                          &nbsp;&nbsp;authDomain: "tokosaya.firebaseapp.com",<br/>
-                                          &nbsp;&nbsp;projectId: "tokosaya",<br/>
-                                          &nbsp;&nbsp;...<br/>
-                                          {'}'};
-                                      </div>
-                                      <div className="mt-2 text-gray-500">
-                                          // ... kode lain ...
-                                      </div>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-
-                      <div className="mt-12 p-6 bg-blue-900/30 border border-blue-500/30 rounded-xl text-center">
-                          <h4 className="font-bold text-blue-200 mb-2">Sudah Melakukan Semua Langkah?</h4>
-                          <p className="text-gray-300 text-sm mb-4">Jika sudah, refresh halaman ini. Tanda ⚠️ OFFLINE MODE di pojok kiri atas akan berubah menjadi <span className="text-green-400 font-bold">ONLINE</span>.</p>
-                          <button onClick={() => window.location.reload()} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold transition-colors">
-                              Refresh Website
-                          </button>
-                      </div>
-                  </div>
-              </div>
-          )}
 
           {activeTab === 'products' && (
             <div className="overflow-x-auto">

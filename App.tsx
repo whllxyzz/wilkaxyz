@@ -1,4 +1,4 @@
-import React, { Component, ReactNode, useEffect } from 'react';
+import React, { ReactNode, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
@@ -8,8 +8,7 @@ import Admin from './pages/Admin';
 import AddProduct from './pages/AddProduct';
 import PaymentGateway from './pages/PaymentGateway';
 import { ToastProvider } from './components/ToastContext';
-import { getStoreSettings, IS_CLOUD_MODE } from './services/mockApi';
-import { AlertTriangle } from 'lucide-react';
+import { getStoreSettings } from './services/mockApi';
 
 interface ErrorBoundaryProps {
   children?: ReactNode;
@@ -21,7 +20,7 @@ interface ErrorBoundaryState {
 }
 
 // Error Boundary Component
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public state: ErrorBoundaryState = {
     hasError: false,
     error: null
@@ -56,21 +55,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     return this.props.children;
   }
 }
-
-// Offline Banner Component
-const OfflineBanner = () => {
-    // If IS_CLOUD_MODE is false, it means the API Key is still the placeholder.
-    if (IS_CLOUD_MODE) return null;
-
-    return (
-        <div 
-            className="fixed bottom-0 left-0 right-0 bg-red-600 text-white p-2 text-center text-xs font-bold z-[9999] flex items-center justify-center gap-2"
-        >
-            <AlertTriangle className="w-4 h-4" />
-            ⚠️ DATABASE NOT CONNECTED: Edit "services/mockApi.ts" to add your Firebase API Key.
-        </div>
-    );
-};
 
 // Wrapper to provide layout
 const Layout: React.FC<{children: React.ReactNode}> = ({ children }) => {
@@ -113,8 +97,6 @@ const Layout: React.FC<{children: React.ReactNode}> = ({ children }) => {
          <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px]"></div>
          <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px]"></div>
       </div>
-
-      <OfflineBanner />
     </div>
   );
 };
